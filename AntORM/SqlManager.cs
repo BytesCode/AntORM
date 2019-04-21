@@ -53,7 +53,7 @@ namespace AntORM
                         cmd.Parameters.AddRange(param);
                     }
                     conn.Open();
-                    return DataTableSerialize.DataReaderToListEntity<T>(cmd.ExecuteReader());
+                    return cmd.ExecuteReader().DataReaderToListEntity<T>();
                 }
             }
         }
@@ -77,7 +77,7 @@ namespace AntORM
                         cmd.Parameters.AddRange(param);
                     }
                     conn.Open();
-                    return DataTableSerialize.DataReaderToEntity<T>(cmd.ExecuteReader());
+                    return cmd.ExecuteReader().DataReaderToEntity<T>();
                 }
             }
         }

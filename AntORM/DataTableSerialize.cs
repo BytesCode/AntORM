@@ -6,14 +6,14 @@ using System.Text;
 
 namespace AntORM
 {
-    public class DataTableSerialize
+    public static class DataTableSerialize
     {
         /// <summary>
         /// DataTable 转换List
         /// </summary>
         /// <param name="dt"></param>
         /// <returns></returns>
-        public static List<T> DatatableList<T>(DataTable table)
+        public static List<T> DatatableList<T>(this DataTable table)
         {
             if (table == null || table.Columns.Count == 0)
                 return new List<T>();
@@ -39,7 +39,7 @@ namespace AntORM
         /// <typeparam name="T"></typeparam>
         /// <param name="reader"></param>
         /// <returns></returns>
-        public static List<T> DataReaderToListEntity<T>(IDataReader reader) where T : new()
+        public static List<T> DataReaderToListEntity<T>(this IDataReader reader) where T : new()
         {
             List<T> list = new List<T>();
             if (reader != null)
@@ -57,7 +57,7 @@ namespace AntORM
         /// <typeparam name="T"></typeparam>
         /// <param name="reader"></param>
         /// <returns></returns>
-        public static T DataReaderToEntity<T>(IDataReader reader) where T : new()
+        public static T DataReaderToEntity<T>(this IDataReader reader) where T : new()
         {
             T t = new T();
             //获取需要映射实体的 所有属性
