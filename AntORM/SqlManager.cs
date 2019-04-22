@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+//using EntityMappingDB;
 
 namespace AntORM
 {
@@ -17,7 +18,6 @@ namespace AntORM
         /// <returns></returns>
         public static int ExecuteNonQuery(string sql, params SqlParameter[] param)
         {
-
             using (SqlConnection conn=new SqlConnection(conStr))
             {
                 using (SqlCommand cmd=new SqlCommand(sql,conn))
@@ -53,7 +53,7 @@ namespace AntORM
                         cmd.Parameters.AddRange(param);
                     }
                     conn.Open();
-                    return cmd.ExecuteReader().DataReaderToListEntity<T>();
+                    return cmd.ExecuteReader().ToEntityList<T>();
                 }
             }
         }
