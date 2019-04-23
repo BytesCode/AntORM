@@ -11,7 +11,8 @@ namespace AntORM
         public delegate T LoadDataReader<T>(IDataRecord dr);
         private static readonly Dictionary<Type, MethodInfo> TypeMap;
 
-
+        //emit里面用到的针对datareader的元数据信息
+        private static readonly DynamicMethodInfo dataReadAssembly = new DynamicMethodInfo(typeof(IDataRecord));
 
 
         static DataTableSerialize()
@@ -30,49 +31,29 @@ namespace AntORM
         }
 
         /// <summary>
-        /// 将 DataReader转换成指定 实体
+        /// 将 DataReader转换成实体
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="reader"></param>
         /// <returns></returns>
-        public static T DataReaderToEntity<T>(this IDataReader reader) where T : new()
+        public static T ToEntity<T>(this IDataReader reader) where T : new()
         {
             T t = new T();
-            //获取需要映射实体的 所有属性
-            PropertyInfo[] propertys = t.GetType().GetProperties();
+            LoadDataReader<T> Load = null;
+            //用于 暂时存放 字段
+            Dictionary<string, PropertyInfo> FieldNames = new Dictionary<string, PropertyInfo>();
 
-            //存储IDataReader 读取出来的所有列名
-            List<string> FieldNameList = new List<string>();
+            var properties = typeof(T).GetProperties();
+            FieldNames = GetPropertyInfo(reader, properties);
+            Load = (LoadDataReader<T>)DataReaderCreateEntity<T>(dataReadAssembly, FieldNames).CreateDelegate(typeof(LoadDataReader<T>));
 
-            //循环reader 将 列名加入list
-            for (int i = 0; i < reader.FieldCount; i++)
-                FieldNameList.Add(reader.GetName(i));
-
-            //循环需要映射的属性
-            foreach (PropertyInfo property in propertys)
+            while (reader.Read())
             {
-                //判断 该值 是否可写入
-                if (!property.CanWrite)
-                    continue;
-
-                //获取字段名
-                string FieldName = property.Name;
-                if (FieldNameList.Contains(FieldName))
-                {
-                    object value = reader[FieldName];
-                    if (value is DBNull)
-                        continue;
-
-                    try
-                    {
-                        property.SetValue(t, value, null);
-                    }
-                    catch { continue; }
-                }
+                t = Load(reader);
+                break;
             }
             return t;
         }
-
 
         /// <summary>
         /// 将 DataReader转换成指定 List
@@ -90,7 +71,7 @@ namespace AntORM
             var properties = typeof(T).GetProperties();
             FieldNames = GetPropertyInfo(reader, properties);
 
-            Load = DataReaderCreateEntity<T>(FieldNames);
+            Load = (LoadDataReader<T>)DataReaderCreateEntity<T>(dataReadAssembly, FieldNames).CreateDelegate(typeof(LoadDataReader<T>));
 
             while (reader.Read())
             {
@@ -106,10 +87,10 @@ namespace AntORM
         /// <typeparam name="T"></typeparam>
         /// <param name="DicProperties"></param>
         /// <returns></returns>
-        private static LoadDataReader<T> DataReaderCreateEntity<T>(Dictionary<string, PropertyInfo> DicProperties)
+        private static DynamicMethod DataReaderCreateEntity<T>(DynamicMethodInfo Assembly, Dictionary<string, PropertyInfo> DicProperties)
         {
             Type type = typeof(T);
-            var dm = new DynamicMethod("ParamInfo" + Guid.NewGuid().ToString(), null, new[] { typeof(IDbCommand), typeof(object) }, type, true);
+            var dm = new DynamicMethod("ParamInfo" + Guid.NewGuid().ToString(), type, new Type[] { Assembly.SourceType }, true);
             var il = dm.GetILGenerator();
             LocalBuilder result = il.DeclareLocal(type);
 
@@ -123,19 +104,19 @@ namespace AntORM
                 il.Emit(OpCodes.Ldarg_0);
                 //第一组，调用AssembleInfo的CanSetted方法，判断是否可以转换
                 il.Emit(OpCodes.Ldstr, item.Key);
-                //il.Emit(OpCodes.Call, true);
+                il.Emit(OpCodes.Call, Assembly.CanSettedMethod);
                 il.Emit(OpCodes.Brfalse, endIfLabel);
 
                 il.Emit(OpCodes.Ldloc, result);
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldstr, item.Key);
-                il.Emit(OpCodes.Call, type.GetMethod("get_Item", new Type[] { typeof(string) }));//获取数据库值
+                il.Emit(OpCodes.Call, Assembly.GetValueMethod);//获取数据库值
 
                 if (item.Value.PropertyType.IsValueType || item.Value.PropertyType == typeof(string))
                 {
                     var cur = Nullable.GetUnderlyingType(item.Value.PropertyType);
                     ////调用强转方法赋值
-                    il.Emit(OpCodes.Newobj, TypeMap[cur ?? item.Value.PropertyType]);
+                    il.Emit(OpCodes.Call, TypeMap[cur ?? item.Value.PropertyType]);
 
                     if (cur != null)
                         il.Emit(OpCodes.Newobj, item.Value.PropertyType.GetConstructor(new Type[] { cur }));
@@ -150,7 +131,7 @@ namespace AntORM
             il.Emit(OpCodes.Ldloc, result);
             il.Emit(OpCodes.Ret);
 
-            return (LoadDataReader<T>)dm.CreateDelegate(typeof(LoadDataReader<T>));
+            return dm;
         }
 
 

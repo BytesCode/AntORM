@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-//using EntityMappingDB;
 
 namespace AntORM
 {
@@ -77,7 +76,7 @@ namespace AntORM
                         cmd.Parameters.AddRange(param);
                     }
                     conn.Open();
-                    return cmd.ExecuteReader().DataReaderToEntity<T>();
+                    return cmd.ExecuteReader().ToEntity<T>();
                 }
             }
         }
