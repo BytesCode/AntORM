@@ -10,8 +10,8 @@ namespace AntORM
     public class SqlManage : DataBaseConnection
     {
         private static readonly string conStr = "Data Source=.;Initial Catalog=studyCode;Integrated Security=True";
-        
 
+        
         #region 执行SQL， 返回受影响行数
         /// <summary>
         /// 执行SQL， 返回受影响行数
@@ -19,17 +19,9 @@ namespace AntORM
         /// <param name="sql">Sql文本</param>
         /// <param name="param"></param>
         /// <returns></returns>
-        public static int ExecuteNonQuery(string sql, params SqlParameter[] param)
+        public static int ExecuteNonQuery(string sqlTxt, params SqlParameter[] param)
         {
-            using (var connection=GetOpenConnection())
-            {
-                using (SqlCommand cmd = new SqlCommand(sql, connection))
-                {
-                    cmd.CommandType = CommandType.Text;
-                    if (param != null) cmd.Parameters.AddRange(param);
-                    return cmd.ExecuteNonQuery();
-                }
-            }
+            return GetCommand(sqlTxt, param).ExecuteNonQuery();
         }
 
         /// <summary>
@@ -38,17 +30,9 @@ namespace AntORM
         /// <param name="sql">Sql文本</param>
         /// <param name="param"></param>
         /// <returns></returns>
-        public static async Task<int> ExecuteNonQueryAsync(string sql, params SqlParameter[] param)
+        public static async Task<int> ExecuteNonQueryAsync(string sqlTxt, params SqlParameter[] param)
         {
-            using (var connection = GetOpenConnection())
-            {
-                using (SqlCommand cmd = new SqlCommand(sql, connection))
-                {
-                    cmd.CommandType = CommandType.Text;
-                    if (param != null) cmd.Parameters.AddRange(param);
-                    return await cmd.ExecuteNonQueryAsync();
-                }
-            }
+            return await GetCommand(sqlTxt, param).ExecuteNonQueryAsync();
         }
         #endregion
 
@@ -62,15 +46,7 @@ namespace AntORM
         /// <returns></returns>
         public static List<T> ExecuteListEntity<T>(string sqlTxt, params SqlParameter[] param) where T : new()
         {
-            using (var conn = GetOpenConnection())
-            {
-                using (SqlCommand cmd = new SqlCommand(sqlTxt, conn))
-                {
-                    cmd.CommandType = CommandType.Text;
-                    if (param != null) cmd.Parameters.AddRange(param);
-                    return cmd.ExecuteReader().ToEntityList<T>();
-                }
-            }
+            return GetCommand(sqlTxt, param).ExecuteReader().ToEntityList<T>();
         }
 
         /// <summary>
@@ -82,16 +58,9 @@ namespace AntORM
         /// <returns></returns>
         public static async Task<List<T>> ExecuteListEntityAsync<T>(string sqlTxt, params SqlParameter[] param) where T : new()
         {
-            using (var conn = GetOpenConnection())
-            {
-                using (SqlCommand cmd = new SqlCommand(sqlTxt, conn))
-                {
-                    cmd.CommandType = CommandType.Text;
-                    if (param != null) cmd.Parameters.AddRange(param);
-                    var dataReader = await cmd.ExecuteReaderAsync();
-                    return dataReader.ToEntityList<T>();
-                }
-            }
+            var dataReader = await GetCommand(sqlTxt, param).ExecuteReaderAsync();
+            if (dataReader == null || !dataReader.HasRows) return new List<T>();
+            return dataReader.ToEntityList<T>();
         }
         #endregion
 
@@ -105,15 +74,7 @@ namespace AntORM
         /// <returns></returns>
         public static T ExecuteEntity<T>(string sqlTxt, params SqlParameter[] param) where T : new()
         {
-            using (var conn = GetOpenConnection())
-            {
-                using (SqlCommand cmd = new SqlCommand(sqlTxt, conn))
-                {
-                    cmd.CommandType = CommandType.Text;
-                    if (param != null) cmd.Parameters.AddRange(param);
-                    return cmd.ExecuteReader().ToEntity<T>();
-                }
-            }
+            return GetCommand(sqlTxt, param).ExecuteReader().ToEntity<T>();
         }
 
         /// <summary>
@@ -125,16 +86,33 @@ namespace AntORM
         /// <returns></returns>
         public static async Task<T> ExecuteEntityAsync<T>(string sqlTxt, params SqlParameter[] param) where T : new()
         {
-            using (var conn = GetOpenConnection())
-            {
-                using (SqlCommand cmd = new SqlCommand(sqlTxt, conn))
-                {
-                    cmd.CommandType = CommandType.Text;
-                    if (param != null) cmd.Parameters.AddRange(param);
-                    var dataReader = await cmd.ExecuteReaderAsync();
-                    return dataReader.ToEntity<T>();
-                }
-            }
+            var dataReader = await GetCommand(sqlTxt, param).ExecuteReaderAsync();
+            if (dataReader == null || !dataReader.HasRows) return new T();
+            return dataReader.ToEntity<T>();
+        }
+        #endregion
+
+        #region 执行SQL,获取结果集中第一行的第一列
+        /// <summary>
+        /// 执行SQL,获取结果集中第一行的第一列
+        /// </summary>
+        /// <param name="sqlTxt"></param>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        public static object ExecuteScalar(string sqlTxt, params SqlParameter[] param)
+        {
+            return GetCommand(sqlTxt, param).ExecuteScalar();
+        }
+
+        /// <summary>
+        /// 异步执行SQL,获取结果集中第一行的第一列
+        /// </summary>
+        /// <param name="sqlTxt"></param>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        public static async Task<object> ExecuteScalarAsync(string sqlTxt, params SqlParameter[] param)
+        {
+            return await GetCommand(sqlTxt, param).ExecuteScalarAsync();
         }
         #endregion
     }
